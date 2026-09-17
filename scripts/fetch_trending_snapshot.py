@@ -71,6 +71,10 @@ def slim_video(v: dict) -> dict:
         "e": v["engagement_rate_pct"],
         "s": v["is_short"],
         "u": v["url"],
+        "th": v.get("thumbnail"),
+        "dur": v.get("duration_sec", 0),
+        "pub": v.get("published_at"),
+        "desc": (v.get("description") or "")[:300],
     }
 
 

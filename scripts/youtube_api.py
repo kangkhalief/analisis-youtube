@@ -115,6 +115,10 @@ class YouTubeClient:
         comments = int(stats.get("commentCount", 0))
         duration_sec = _parse_duration(content.get("duration", "PT0S"))
         engagement_rate = round(((likes + comments) / views) * 100, 3) if views else 0.0
+        thumbnails = snippet.get("thumbnails", {})
+        thumbnail = (
+            thumbnails.get("medium") or thumbnails.get("high") or thumbnails.get("default") or {}
+        ).get("url")
         return {
             "video_id": v.get("id"),
             "title": snippet.get("title"),
@@ -129,6 +133,8 @@ class YouTubeClient:
             "is_short": duration_sec > 0 and duration_sec <= 60,
             "tags": snippet.get("tags", []),
             "category_id": snippet.get("categoryId"),
+            "thumbnail": thumbnail,
+            "description": (snippet.get("description") or "")[:500],
             "url": f"https://www.youtube.com/watch?v={v.get('id')}",
         }
 
