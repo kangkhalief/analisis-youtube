@@ -1,0 +1,42 @@
+name: Refresh trending snapshot
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: python3 -m pip install -r requirements.txt
+
+      - name: Fetch trending snapshot
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        run: python3 scripts/fetch_trending_snapshot.py
+
+      - name: Embed snapshot into dashboard
+        run: python3 scripts/embed_trending_data.py
+
+      - name: Commit dashboard if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- dashboard/dashboard.html; then
+            echo "No changes to dashboard.html, skipping commit."
+          else
+            git add dashboard/dashboard.html
+            git commit -m "Auto-refresh trending snapshot [skip ci]"
+            git push
+          fi
