@@ -71,12 +71,11 @@ Data-nya **tertanam langsung di halaman** (bukan dipanggil live dari browser) �
 keamanan: API key kamu tidak pernah ada di kode halaman publik, jadi aman dibagikan ke siapa saja
 tanpa risiko API key dicuri/disalahgunakan.
 
-**Cara refresh datanya** (kapanpun kamu mau data lebih baru): buka chat dengan Claude dan minta
-"refresh data trending", atau jalankan manual:
-```bash
-./scripts/refresh_trending.sh
-```
-lalu minta Claude publish ulang dashboard-nya. Prosesnya <1 menit.
+**Refresh-nya sekarang full otomatis, tiap 6 jam**, lewat pipeline ini:
+1. **GitHub Actions** ([.github/workflows/refresh-trending.yml](.github/workflows/refresh-trending.yml)) jalan tiap 6 jam → ambil data trending pakai `YOUTUBE_API_KEY` yang tersimpan sebagai GitHub Secret → commit `dashboard/dashboard.html` yang sudah diperbarui ke repo [kangkhalief/analisis-youtube](https://github.com/kangkhalief/analisis-youtube) (publik, tanpa API key di kode)
+2. **Claude cloud routine** ("Sync trending dashboard artifact" — lihat di https://claude.ai/code/routines) otomatis terpicu lewat webhook setiap ada commit baru → publish ulang ke Artifact ini. Ada juga jadwal cadangan tiap 6 jam 20 menit kalau webhook-nya kebetulan gagal.
+
+Tidak perlu diapa-apakan lagi — kalau mau cek manual: `gh run list --repo kangkhalief/analisis-youtube` (riwayat GitHub Actions) atau buka halaman routine di claude.ai/code/routines.
 
 **Supaya publik beneran bisa akses**: dashboard ini defaultnya **privat**. Buka link dashboard-nya,
 klik tombol **Share** di pojok kanan atas halaman, lalu pilih opsi share publik. Claude tidak bisa
