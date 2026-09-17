@@ -357,6 +357,9 @@
   .analysis-panel li { margin-bottom: 3px; }
   .analysis-loading { color: var(--text-muted); font-style: italic; }
   .analysis-error { color: var(--critical); }
+  .prompt-block { margin-bottom: 4px; }
+  .prompt-block .qb-command { max-height: 140px; overflow-y: auto; }
+  .prompt-copy-btn.copied { background: var(--good); }
 </style>
 
 <div class="app">
@@ -1026,20 +1029,50 @@
       "Balas HANYA dalam format persis berikut, tanpa markdown/tanda bintang, tanpa kalimat pembuka/penutup tambahan:\n" +
       "RINGKASAN: [2-3 kalimat tentang apa yang dibahas/ditampilkan video ini]\n" +
       "REMAKE: [ide 1] | [ide 2] | [ide 3]\n" +
-      "TIPS: [tip 1] | [tip 2] | [tip 3] | [tip 4]";
+      "TIPS: [tip 1] | [tip 2] | [tip 3] | [tip 4]\n" +
+      "THUMBNAIL_PROMPT: [satu prompt bahasa Inggris, siap pakai di tools AI image generator (Midjourney/DALL-E/dsb), yang mendeskripsikan komposisi, ekspresi wajah/emosi, warna dominan, teks overlay singkat, dan gaya visual untuk membuat thumbnail bergaya serupa/remake dari video ini. Tulis sebagai satu paragraf deskriptif, bukan daftar.]\n" +
+      "AUDIO_PROMPT: [satu prompt template bahasa Indonesia yang bisa dipakai kreator untuk merangkum narasi/audio video sejenis ini menjadi teks terstruktur — mencakup instruksi untuk mengekstrak hook pembuka, poin-poin utama tiap segmen, dan call-to-action penutup. Sertakan placeholder [TEMPEL TRANSKRIP DI SINI] di bagian akhir prompt supaya siap pakai dengan hasil transkrip dari tools speech-to-text manapun.]";
   }
 
   function parseAnalysis(text) {
+    var ALL_MARKERS = ["RINGKASAN", "REMAKE", "TIPS", "THUMBNAIL_PROMPT", "AUDIO_PROMPT"];
     function grab(marker, nextMarkers) {
-      var re = new RegExp(marker + "\\s*:\\s*([\\s\\S]*?)(?=(?:" + nextMarkers.join("|") + ")\\s*:|$)");
+      var lookahead = nextMarkers.length ? "(?:" + nextMarkers.join("|") + ")\\s*:|$" : "$";
+      var re = new RegExp(marker + "\\s*:\\s*([\\s\\S]*?)(?=" + lookahead + ")");
       var m = text.match(re);
       return m ? m[1].trim() : "";
     }
     return {
-      ringkasan: grab("RINGKASAN", ["REMAKE", "TIPS"]),
-      remake: grab("REMAKE", ["TIPS"]),
-      tips: grab("TIPS", [])
+      ringkasan: grab("RINGKASAN", ALL_MARKERS.slice(1)),
+      remake: grab("REMAKE", ALL_MARKERS.slice(2)),
+      tips: grab("TIPS", ALL_MARKERS.slice(3)),
+      thumbnailPrompt: grab("THUMBNAIL_PROMPT", ALL_MARKERS.slice(4)),
+      audioPrompt: grab("AUDIO_PROMPT", [])
     };
+  }
+
+  function copyBlock(text) {
+    return (
+      '<div class="prompt-block">' +
+        '<div class="qb-command">' + esc(text || "-") + "</div>" +
+        '<button class="qb-copy prompt-copy-btn" type="button" data-copy-text="' + esc(text || "") + '">Salin prompt</button>' +
+      "</div>"
+    );
+  }
+
+  function wireCopyButtons(panel) {
+    panel.querySelectorAll(".prompt-copy-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var text = btn.getAttribute("data-copy-text") || "";
+        var done = function () {
+          var original = btn.textContent;
+          btn.textContent = "Tersalin!";
+          btn.classList.add("copied");
+          setTimeout(function () { btn.textContent = original; btn.classList.remove("copied"); }, 1500);
+        };
+        copyToClipboard(text, done);
+      });
+    });
   }
 
   function renderAnalysis(panel, parsed) {
@@ -1051,7 +1084,10 @@
     panel.innerHTML =
       "<h4>Ringkasan Konten</h4><div>" + esc(parsed.ringkasan || "-") + "</div>" +
       "<h4>Ide Remake</h4>" + list(parsed.remake) +
-      "<h4>Tips Produksi</h4>" + list(parsed.tips);
+      "<h4>Tips Produksi</h4>" + list(parsed.tips) +
+      "<h4>Prompt Thumbnail (AI Image)</h4>" + copyBlock(parsed.thumbnailPrompt) +
+      "<h4>Prompt Ringkas Audio → Teks</h4>" + copyBlock(parsed.audioPrompt);
+    wireCopyButtons(panel);
   }
 
   function runAnalysis(v, catLabel, btn, panel) {
@@ -1250,25 +1286,29 @@
         qbCopyEl.classList.add("copied");
         setTimeout(function () { qbCopyEl.textContent = "Salin perintah"; qbCopyEl.classList.remove("copied"); }, 1500);
       };
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(done).catch(function () { fallbackCopy(text, done); });
-      } else {
-        fallbackCopy(text, done);
-      }
+      copyToClipboard(text, done);
     });
 
-    function fallbackCopy(text, done) {
-      var ta = document.createElement("textarea");
-      ta.value = text;
-      ta.style.position = "fixed";
-      ta.style.opacity = "0";
-      document.body.appendChild(ta);
-      ta.select();
-      try { document.execCommand("copy"); done(); } catch (e) {}
-      document.body.removeChild(ta);
-    }
-
     updateCommand();
+  }
+
+  function fallbackCopy(text, done) {
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); done(); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+
+  function copyToClipboard(text, done) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(function () { fallbackCopy(text, done); });
+    } else {
+      fallbackCopy(text, done);
+    }
   }
 
   // ---------- tab switching ----------
