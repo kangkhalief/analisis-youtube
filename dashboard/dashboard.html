@@ -882,7 +882,7 @@
       opt.textContent = catLabels[cid];
       trendCategoryEl.appendChild(opt);
     });
-    trendUpdatedEl.textContent = "Diperbarui " + formatDateTime(trendingSnapshot.generated_at) + " · minta \"refresh trending\" di chat untuk update terbaru";
+    trendUpdatedEl.textContent = "Diperbarui " + formatDateTime(trendingSnapshot.generated_at) + " · auto-refresh tiap 6 jam";
 
     trendCountryEl.addEventListener("change", renderTrendingMain);
     trendCategoryEl.addEventListener("change", renderTrendingMain);
